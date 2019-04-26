@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+int *bitmap;
+
 #define FS_MAGIC           0xf0f03410
 #define INODES_PER_BLOCK   128
 #define POINTERS_PER_INODE 5
@@ -36,7 +38,38 @@ union fs_block {
 
 int fs_format()
 {
-	return 0;
+
+	// create a new file system
+	union fs_block block;
+
+	// return failure on attempt to format an already-mounted disk
+	if (bitmap != NULL) {
+		printf("simplefs: Error! Cannot format an already-mounted disk.\n");
+		return 0;
+	}
+
+	/* Write the superblock */
+	block.super.magic = FS_MAGIC;
+	block.super.nblocks = disk_size();
+
+	// set aside ten percent of the blocks for inodes
+	if (block.super.nblocks % 10 == 0) {
+		block.super.ninodeblocks = block.super.nblocks/10;
+	}
+	// round up
+	else {
+		block.super.ninodeblocks = block.super.nblocks/10 + 1;
+	}
+	
+	block.super.ninodes = INODES_PER_BLOCK * block.super.nblocks;
+
+	disk_write(0, block.data);
+
+	// TODO: destroy any data already present
+	// TODO: clear the inode table
+	// TODO: return 1 on success, 0 otherwise
+	
+	return 1;
 }
 
 void fs_debug()
