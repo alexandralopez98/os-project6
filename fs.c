@@ -97,9 +97,9 @@ void fs_debug()
 		return;
 	}
 
-	printf("    %d blocks on disk\n", block.super.nblocks);
-	printf("    %d blocks for inodes\n", block.super.ninodeblocks);
-	printf("    %d inodes total\n", block.super.ninodes);
+	printf("\t%d blocks on disk\n", block.super.nblocks);
+	printf("\t%d blocks for inodes\n", block.super.ninodeblocks);
+	printf("\t%d inodes total\n", block.super.ninodes);
 
 	/* Report on how the inodes are organized */
 
@@ -139,7 +139,7 @@ void fs_debug()
 					disk_read(inode.indirect, blockforindirects.data);
 
 					printf("\tindirect data blocks:");
-					int indirectblocks = inode.size/4096 - 5;
+					int indirectblocks = (double)inode.size/4096 - 5;
 					int l;
 					for (l = 0; l < indirectblocks; l++) {
 						printf(" %d", blockforindirects.pointers[l]);
