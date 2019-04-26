@@ -125,7 +125,7 @@ void fs_debug()
 				// go through all 5 direct pointers to data blocks
 				printf("\tdirect blocks:");
 				int k;
-				for (k = 0; (k * 4096) < inode.size & k < 5; k++) {
+				for (k = 0; (k * 4096 < inode.size) & k < 5; k++) {
 					printf(" %d", inode.direct[k]);
 				}
 				printf("\n");
