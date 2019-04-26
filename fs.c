@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+int *bitmap;
+
 #define FS_MAGIC           0xf0f03410
 #define INODES_PER_BLOCK   128
 #define POINTERS_PER_INODE 5
@@ -36,19 +38,63 @@ union fs_block {
 
 int fs_format()
 {
-	return 0;
+
+	// create a new file system
+	union fs_block block;
+
+	// return failure on attempt to format an already-mounted disk
+	if (bitmap != NULL) {
+		printf("simplefs: Error! Cannot format an already-mounted disk.\n");
+		return 0;
+	}
+
+	/* Write the superblock */
+	block.super.magic = FS_MAGIC;
+	block.super.nblocks = disk_size();
+
+	// set aside ten percent of the blocks for inodes
+	if (block.super.nblocks % 10 == 0) {
+		block.super.ninodeblocks = block.super.nblocks/10;
+	}
+	// round up
+	else {
+		block.super.ninodeblocks = block.super.nblocks/10 + 1;
+	}
+	
+	block.super.ninodes = INODES_PER_BLOCK * block.super.ninodeblocks;
+
+	disk_write(0, block.data);
+
+	// TODO: destroy any data already present
+	// TODO: clear the inode table
+	// TODO: return 1 on success, 0 otherwise
+	
+	return 1;
 }
 
 void fs_debug()
 {
+	/* Scan a mounted filesystem */
 	union fs_block block;
 
 	disk_read(0,block.data);
 
 	printf("superblock:\n");
-	printf("    %d blocks\n",block.super.nblocks);
-	printf("    %d inode blocks\n",block.super.ninodeblocks);
-	printf("    %d inodes\n",block.super.ninodes);
+
+	if (block.super.magic == FS_MAGIC) {
+		printf("magic number is valid\n");
+	}
+	else {
+		printf("simplefs: Error! Magic number is invalid.\n");
+		return;
+	}
+
+	printf("    %d blocks on disk\n",block.super.nblocks);
+	printf("    %d blocks for inodes\n",block.super.ninodeblocks);
+	printf("    %d inodes total\n",block.super.ninodes);
+
+	/* Report on how the inodes are organized */
+
 }
 
 int fs_mount()
