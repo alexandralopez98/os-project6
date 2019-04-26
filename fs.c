@@ -138,9 +138,16 @@ void fs_debug()
 					union fs_block blockforindirects;
 					disk_read(inode.indirect, blockforindirects.data);
 
-					printf("\tindirect data blocks:");
-					int indirectblocks = (double)inode.size/4096 - 5;
+					int indirectblocks;
+					if (inode.size % 4096 == 0) {
+						indirectblocks = inode.size/4096 - 5; 
+					}
+					else {
+						indirectblocks = inode.size/4096 - 5 + 1;
+					}
 					printf("indirect blocks: %d\n", indirectblocks);
+					printf("\tindirect data blocks:");
+					
 					int l;
 					for (l = 0; l < indirectblocks; l++) {
 						printf(" %d", blockforindirects.pointers[l]);
