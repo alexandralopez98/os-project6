@@ -139,7 +139,7 @@ void fs_debug()
 					disk_read(inode.indirect, blockforindirects.data);
 
 					printf("\tindirect data blocks:");
-					int indirectblocks = inode.size/4096 - 5;
+					int indirectblocks = (double)inode.size/4096 - 5;
 					printf("indirect blocks: %d\n", indirectblocks);
 					int l;
 					for (l = 0; l < indirectblocks; l++) {
