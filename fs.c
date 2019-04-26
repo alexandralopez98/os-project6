@@ -65,8 +65,18 @@ int fs_format()
 
 	disk_write(0, block.data);
 
-	// TODO: destroy any data already present
+	//Destroy any data already present
+	union fs_block zero;
+	memset(zero.data,0,4096);
+	
+	for (int i = 0; i < block.super.inodeblocks; i++) {
+		disk_write(i, zero.data);
+	}
 	// TODO: clear the inode table
+
+	
+
+
 	// TODO: return 1 on success, 0 otherwise
 	
 	return 1;
