@@ -210,6 +210,29 @@ int fs_create()
 
 int fs_delete( int inumber )
 {
+	// find the block index that we need
+	int i = (inumber + 128 - 1)/128;
+
+	union fs_block block;
+	disk_read(0, block.data);
+
+	// ensure that the index is not beyond the bounds
+	if (i > block.super.ninodeblocks) {
+		return 0;
+	}
+
+	// find any empty space with the disk read function
+	disk_read(i, block.data);
+
+	struct fs_inode = block.inode[inumber % 128];
+	if (inode.isvalid) {
+		inode = (struct fs_inode) { 0 };
+		block.inode[inumber % 128] = inode;
+		disk_write(i, block.data);
+		return 1; 
+	}
+
+	// return if there is an invalid inode 
 	return 0;
 }
 
