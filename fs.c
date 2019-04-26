@@ -142,11 +142,12 @@ void fs_debug()
 					}
 					printf("\n");
 				}
+			}
 		}
 	}	
 }
 
-int fs_mount()
+int fs_mount() 
 {
 	return 0;
 }
