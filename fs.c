@@ -175,7 +175,7 @@ int fs_create()
 	disk_read(0, block.data);
 
 	int i;
-	for (int i = 1; i < block.super.nblocks; i++) {
+	for (i = 1; i < block.super.nblocks; i++) {
 		// read and heck inode block for empty spaces
 		disk_read(i, block.data);
 
