@@ -154,6 +154,7 @@ int fs_mount()
 
 int fs_create()
 {
+	// no mounted disk
 	if (bitmap == NULL) {
 		return 0;
 	}
@@ -161,31 +162,35 @@ int fs_create()
 	union fs_block block;
 	disk_read(0, block.data);
 
-	for (int indoe_block_index = 1; inode_block_index < block.super.nblocks; inode_block_index++) {
+	for (int inode_block_index = 1; inode_block_index < block.super.nblocks; inode_block_index++) {
+		// read and heck inode block for empty spaces
 		disk_read(inode_block_index, block.data);
 
 		struct fs_inode inode;
-		for (int indoe_index = 0; inode_index < POINTERS_PER_BLOCK; inode_index++) {
-			if (inode_index == 0 && indoe_block_index == 1) {
+		for (int inode_index = 0; inode_index < POINTERS_PER_BLOCK; inode_index++) {
+			if (inode_index == 0 && inode_block_index == 1) {
 				inode_index = 1;
 			}
 
-			inode = block.indoe[inode_index];
+			inode = block.inode[inode_index];
 
 			if (!inode.isvalid) {
-				 inode.isvalid = true;
-				 inode.size = 0;
-				 memset(inode.direct, 0, sizeof(inode.direct));
-				 inode.indirect = 0;
 
-				 bitmap[indoe_block_index] = 1;
-				 block.indoe[inode_index] = inode;
-				 disk_write(indoe_block_index, block.data);
-				 return inode_index + (indoe_block_index - 1) * 128;
+				// valid inode = safe to fill space
+				inode.isvalid = true;
+				inode.size = 0;
+				memset(inode.direct, 0, sizeof(inode.direct));
+				inode.indirect = 0;
+
+				bitmap[inode_block_index] = 1;
+				block.inode[inode_index] = inode;
+				disk_write(inode_block_index, block.data);
+				return inode_index + (inode_block_index - 1) * 128;
 			}
 		}
 	}
 
+	// failed to create inode because blocks are full
 	return 0;
 }
 
