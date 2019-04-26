@@ -54,11 +54,11 @@ int fs_format()
 
 	// set aside ten percent of the blocks for inodes
 	// if (block.super.nblocks % 10 == 0) {
-		block.super.ninodeblocks = block.super.nblocks/10;
+		// block.super.ninodeblocks = block.super.nblocks/10;
 	// }
 	// round up
 	// else {
-		// block.super.ninodeblocks = block.super.nblocks/10 + 1;
+		block.super.ninodeblocks = block.super.nblocks/10 + 1;
 	// }
 	
 	block.super.ninodes = INODES_PER_BLOCK * block.super.ninodeblocks;
