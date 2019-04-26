@@ -53,13 +53,13 @@ int fs_format()
 	block.super.nblocks = disk_size();
 
 	// set aside ten percent of the blocks for inodes
-	if (block.super.nblocks % 10 == 0) {
+	// if (block.super.nblocks % 10 == 0) {
 		block.super.ninodeblocks = block.super.nblocks/10;
-	}
+	// }
 	// round up
-	else {
-		block.super.ninodeblocks = block.super.nblocks/10 + 1;
-	}
+	// else {
+		// block.super.ninodeblocks = block.super.nblocks/10 + 1;
+	// }
 	
 	block.super.ninodes = INODES_PER_BLOCK * block.super.ninodeblocks;
 
@@ -139,7 +139,7 @@ void fs_debug()
 					disk_read(inode.indirect, blockforindirects.data);
 
 					printf("\tindirect data blocks:");
-					int indirectblocks = (double)inode.size/4096 - 5;
+					int indirectblocks = inode.size/4096 - 5;
 					int l;
 					for (l = 0; l < indirectblocks; l++) {
 						printf(" %d", blockforindirects.pointers[l]);
