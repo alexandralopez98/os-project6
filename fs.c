@@ -69,7 +69,8 @@ int fs_format()
 	union fs_block reset;
 	memset(reset.data, 0, 4096);
 	
-	for (int i = 0; i < block.super.ninodeblocks; i++) {
+	int i;
+	for (i = 0; i < block.super.ninodeblocks; i++) {
 		disk_write(i, reset.data);
 	}
 
@@ -124,7 +125,7 @@ void fs_debug()
 				// go through all 5 direct pointers to data blocks
 				printf("\tdirect blocks:");
 				int k;
-				for (k = 0; k * 4096 < inode.size & k < 5; k++) {
+				for (k = 0; (k * 4096) < inode.size & k < 5; k++) {
 					printf(" %d", inode.direct[k]);
 				}
 				printf("\n");
