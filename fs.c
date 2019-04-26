@@ -66,11 +66,11 @@ int fs_format()
 	disk_write(0, block.data);
 
 	//Destroy any data already present
-	union fs_block zero;
-	memset(zero.data,0,4096);
+	union fs_block reset;
+	memset(reset.data,0,4096);
 	
-	for (int i = 0; i < block.super.inodeblocks; i++) {
-		disk_write(i, zero.data);
+	for (int i = 0; i < block.super.ninodeblocks; i++) {
+		disk_write(i, reset.data);
 	}
 	// TODO: clear the inode table
 
