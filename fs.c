@@ -150,7 +150,7 @@ void fs_debug()
 
 					int l;
 					for (l = 0; l < indirectblocks; l++) {
-						printf(" %d", blockforindirects.data[l]);
+						printf(" %d", blockforindirects.pointers[l]);
 					}
 					printf("\n");
 				}
