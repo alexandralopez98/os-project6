@@ -125,7 +125,7 @@ void fs_debug()
 				// go through all 5 direct pointers to data blocks
 				printf("\tdirect blocks:");
 				int k;
-				for (k = 0; (k * 4096 < inode.size) & (k < 5); k++) {
+				for (k = 0; (k * 4096 < inode.size) && (k < 5); k++) {
 					printf(" %d", inode.direct[k]);
 				}
 				printf("\n");
@@ -174,30 +174,32 @@ int fs_create()
 	union fs_block block;
 	disk_read(0, block.data);
 
-	for (int inode_block_index = 1; inode_block_index < block.super.nblocks; inode_block_index++) {
+	int i;
+	for (int i = 1; i < block.super.nblocks; i++) {
 		// read and heck inode block for empty spaces
-		disk_read(inode_block_index, block.data);
+		disk_read(i, block.data);
 
 		struct fs_inode inode;
-		for (int inode_index = 0; inode_index < POINTERS_PER_BLOCK; inode_index++) {
-			if (inode_index == 0 && inode_block_index == 1) {
-				inode_index = 1;
+		int j;
+		for (j = 0; j < POINTERS_PER_BLOCK; j++) {
+			if (j == 0 && i == 1) {
+				j = 1;
 			}
 
-			inode = block.inode[inode_index];
+			inode = block.inode[j];
 
 			if (!inode.isvalid) {
 
 				// valid inode = safe to fill space
-				inode.isvalid = true;
+				inode.isvalid = 1;
 				inode.size = 0;
 				memset(inode.direct, 0, sizeof(inode.direct));
 				inode.indirect = 0;
 
-				bitmap[inode_block_index] = 1;
-				block.inode[inode_index] = inode;
-				disk_write(inode_block_index, block.data);
-				return inode_index + (inode_block_index - 1) * 128;
+				bitmap[i] = 1;
+				block.inode[j] = inode;
+				disk_write(i, block.data);
+				return j + (i - 1) * 128;
 			}
 		}
 	}
