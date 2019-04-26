@@ -107,11 +107,13 @@ void fs_debug()
 
 	// starting at the second block
 	// loop through every inode block
-	for (int i = 1; i < block.super.ninodeblocks; i++) {
+	int i;
+	for (i = 1; i < block.super.ninodeblocks; i++) {
 		disk_read(i, inodeblock.data);
 
 		// loop through every inode in the block
-		for (int j = 0; j < INODES_PER_BLOCK; j++) {
+		int j;
+		for (j = 0; j < INODES_PER_BLOCK; j++) {
 			inode = inodeblock.inode[j];
 
 			// check if inode is valid
@@ -121,7 +123,8 @@ void fs_debug()
 		
 				// go through all 5 direct pointers to data blocks
 				printf("\tdirect blocks:");
-				for (int k = 0; k * 4096 < inode.size & k < 5; k++) {
+				int k;
+				for (k = 0; k * 4096 < inode.size & k < 5; k++) {
 					printf(" %d", inode.direct[k]);
 				}
 				printf("\n");
@@ -136,8 +139,8 @@ void fs_debug()
 
 					printf("\tindirect data blocks:");
 					int indirectblocks = inode.size/4096 - 5;
-
-					for (int l = 0; l < indirectblocks; l++) {
+					int l;
+					for (l = 0; l < indirectblocks; l++) {
 						printf(" %d", blockforindirects.pointers[l]);
 					}
 					printf("\n");
