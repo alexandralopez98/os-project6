@@ -67,16 +67,13 @@ int fs_format()
 
 	//Destroy any data already present
 	union fs_block reset;
-	memset(reset.data,0,4096);
+	memset(reset.data, 0, 4096);
 	
 	for (int i = 0; i < block.super.ninodeblocks; i++) {
 		disk_write(i, reset.data);
 	}
+
 	// TODO: clear the inode table
-
-	
-
-
 	// TODO: return 1 on success, 0 otherwise
 	
 	return 1;
@@ -87,7 +84,7 @@ void fs_debug()
 	/* Scan a mounted filesystem */
 	union fs_block block;
 
-	disk_read(0,block.data);
+	disk_read(0, block.data);
 
 	printf("superblock:\n");
 
@@ -99,12 +96,54 @@ void fs_debug()
 		return;
 	}
 
-	printf("    %d blocks on disk\n",block.super.nblocks);
-	printf("    %d blocks for inodes\n",block.super.ninodeblocks);
-	printf("    %d inodes total\n",block.super.ninodes);
+	printf("    %d blocks on disk\n", block.super.nblocks);
+	printf("    %d blocks for inodes\n", block.super.ninodeblocks);
+	printf("    %d inodes total\n", block.super.ninodes);
 
 	/* Report on how the inodes are organized */
 
+	union fs_block inodeblock;
+	struct fs_inode inode;
+
+	// starting at the second block
+	// loop through every inode block
+	for (int i = 1; i < block.super.ninodeblocks; i++) {
+		disk_read(i, inodeblock.data);
+
+		// loop through every inode in the block
+		for (int j = 0; j < INODES_PER_BLOCK; j++) {
+			inode = inodeblock.inode[j];
+
+			// check if inode is valid
+			if (inode.isvalid) {
+				printf("inode %d:\n", j);
+				printf("\tsize: %d bytes\n", inode.size);
+		
+				// go through all 5 direct pointers to data blocks
+				printf("\tdirect blocks:");
+				for (int k = 0; k * 4096 < inode.size & k < 5; k++) {
+					printf(" %d", inode.direct[k]);
+				}
+				printf("\n");
+
+				// check for indirect block (inode size will be greater than the total size of 5 direct blocks)
+				if (inode.size > 5 * 4096) {
+					printf("\tindirect block: %d\n", inode.indirect);
+
+					// find the indirect data blocks
+					union fs_block blockforindirects;
+					disk_read(inode.indirect, blockforindirects.data);
+
+					printf("\tindirect data blocks:");
+					int indirectblocks = inode.size/4096 - 5;
+
+					for (int l = 0; l < indirectblocks; l++) {
+						printf(" %d", blockforindirects.pointers[l]);
+					}
+					printf("\n");
+				}
+		}
+	}	
 }
 
 int fs_mount()
