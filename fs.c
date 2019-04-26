@@ -145,12 +145,12 @@ void fs_debug()
 					else {
 						indirectblocks = inode.size/4096 - 5 + 1;
 					}
-					printf("indirect blocks: %d\n", indirectblocks);
+
 					printf("\tindirect data blocks:");
-					
+
 					int l;
 					for (l = 0; l < indirectblocks; l++) {
-						printf(" %d", blockforindirects.pointers[l]);
+						printf(" %d", blockforindirects.data[l]);
 					}
 					printf("\n");
 				}
