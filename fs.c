@@ -15,7 +15,7 @@ int sizeBitmap;
 #define INODES_PER_BLOCK   128
 #define POINTERS_PER_INODE 5
 #define POINTERS_PER_BLOCK 1024
-#define BLOCK_SIZE BLOCK_SIZE
+#define BLOCK_SIZE 4096
 
 struct fs_superblock {
 	int magic;
@@ -203,7 +203,7 @@ int fs_mount()
 	}
 
 
-	return 0;
+	return 1;
 }
 
 int getInodeNumber(int blockindex, int inodeindex) {
@@ -233,9 +233,9 @@ int fs_create()
 		// loop through all inodes in our inode block
 		for (j = 0; j < INODES_PER_BLOCK; j++) {
 			// TODO: check this if statement
-			// if (j == 0 && i == 1) {
-			// 	j = 1;
-			// }
+			if (j == 0 && i == 1) {
+				j = 1;
+			}
 
 			// read in inode at that index
 			inode = block.inode[j];
@@ -401,7 +401,7 @@ int fs_read( int inumber, char *data, int length, int offset )
 	int totalbytesread = 0;
 	memset(data, 0, length);
 	int tempbytesread = BLOCK_SIZE;
-	while (directindex < 5 && bytesread < length)
+	while (directindex < 5 && totalbytesread < length)
 	{
 		disk_read(inode.direct[directindex], directblock.data);
 
