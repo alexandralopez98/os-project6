@@ -75,9 +75,6 @@ int fs_format()
 	for (i = 0; i < superblock.super.ninodeblocks; i++) {
 		disk_write(i, reset.data);
 	}
-
-	// TODO: clear the inode table
-	// TODO: return 1 on success, 0 otherwise
 	
 	return 1;
 }
@@ -345,7 +342,120 @@ int fs_getsize(int inumber)
 
 int fs_read( int inumber, char *data, int length, int offset )
 {
-	return 0;
+	// get inode block
+	int blockNumber = getBlockNumber(inumber);
+
+	// read in the super block
+	union fs_block block;
+	disk_read(0, block.data);
+
+	// check if the block number is valid; return -1 on error
+	if (blockNumber > block.super.ninodeblocks || blockNumber == 0)
+	{
+		printf("simplefs: Error! Block number is out of bounds.\n");
+		return -1;
+	}
+
+	// read in the data from the inode block
+	disk_read(blockNumber, block.data);
+
+	// read in the inode we want
+	struct fs_inode inode;
+	inode = block.inode[inumber % 128];
+
+	// return error if inode is invalid
+	if (!inode.isvalid)
+	{
+		printf("simplefs: Error! Invalid inode.\n");
+		return 0;
+	}
+	// return error if inode's size is 0
+	else if (inode.size == 0)
+	{
+		printf("simplefs: Error! Inode's size is 0.\n");
+		return 0;
+	}
+	// return error if offset is out of bounds
+	else if (inode.size < offset)
+	{
+		printf("simplefs: Error! Offset is out of bounds.\n");
+		return 0;
+	}
+
+	// find the direct block we want to read from
+	int directindex = offset / BLOCK_SIZE;
+	if (directindex > 5)
+	{
+		printf("simplefs: Error! Direct block index is out of bounds.\n");
+		return 0;
+	}
+
+	// adjust length if the end of the inode is reached before that amount of bytes are read
+	if (inode.size < length + offset)
+	{
+		length = inode.size - offset;
+	}
+
+	// iterate through the direct blocks and read in the data
+	union fs_block directblock;
+	int totalbytesread = 0;
+	memset(data, 0, length);
+	int tempbytesread = BLOCK_SIZE;
+	while (directindex < 5 && bytesread < length)
+	{
+		disk_read(inode.direct[directindex], directblock.data);
+
+		// adjust tempbytesread variable if we have reached the end of the inode
+		if (tempbytesread + totalbytesread > length)
+		{
+			tempbytesread = length - totalbytesread;
+		}
+
+		// append read data to our data variable
+		strncat(data, directblock.data, tempbytesread);
+		directindex++;
+		totalbytesread += tempbytesread;
+	}
+
+	// read from indirect block if we still have bytes left to be read
+	if (totalbytesread < length)
+	{
+
+		// read in the indirect block
+		union fs_block indirectblock;
+		union fs_block tempblock;
+		disk_read(inode.indirect, indirectblock.data);
+
+		// iterate through the indirect data blocks
+		int indirectblocks;
+		if (inode.size % BLOCK_SIZE == 0)
+		{
+			indirectblocks = inode.size / BLOCK_SIZE - 5;
+		}
+		else
+		{
+			indirectblocks = inode.size / BLOCK_SIZE - 5 + 1;
+		}
+		int i;
+		tempbytesread = BLOCK_SIZE;
+		for (i = 0; (i < indirectblocks) && (totalbytesread < length); i++)
+		{
+			disk_read(indirectblock.pointers[i], tempblock.data);
+
+			// adjust tempbytesread variable if we have reached the end of the inode
+			if (tempbytesread + totalbytesread > length)
+			{
+				tempbytesread = length - totalbytesread;
+			}
+
+			// append read data to our data variable
+			strncat(data, tempblock.data, tempbytesread);
+			totalbytesread += tempbytesread;
+		}
+	}
+
+	// return the total number of bytes read (could be smaller than the number requested)
+	return totalbytesread;
 }
 
 int getNextBlock() {
