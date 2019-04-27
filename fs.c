@@ -224,7 +224,7 @@ int fs_create()
 
 	int i;
 	// loop through all inode blocks
-	for (i = 1; i < block.super.ninodeblocks; i++) {
+	for (i = 1; i < block.super.ninodeblocks + 1; i++) {
 		// read in every inode block
 		disk_read(i, block.data);
 
