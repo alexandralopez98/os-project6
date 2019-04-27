@@ -348,7 +348,118 @@ int fs_read( int inumber, char *data, int length, int offset )
 	return 0;
 }
 
+int getNextBlock() {
+	union fs_block block;
+	disk_read(0, block.data); //read superblock
+
+	int i;
+	for (i = block.super.ninodeblocks + 1; i < sizeBitmap; i++) {
+		if (bitmap[i] == 0) {
+			memset(&bitmap[i], 0, sizeof(bitmap[0]));
+			return i;
+		}
+	}
+
+	printf("simplefs: Error! There is no more room for blocks.\n");
+	return -1;
+}
+
 int fs_write( int inumber, const char *data, int length, int offset )
 {
+	union fs_block block;
+	disk_read(0, block.data);
+	if (inumber == 0 || inumber > block.super.ninodes) {
+		printf("simplefs: Error! Invalid inumber.\n");
+		return 0;
+	}
+
+	int bytes_written = 0;
+	int blockNumber = getBlockNumber(inumber);
+
+	// we need to read the block to be written to
+	disk_read(blockNumber, block.data);
+
+	// fetch the inode data
+	struct fs_inode inode = block.inode[inumber % 128];
+	if (!inode.isvalid) {
+		printf("Error: invalid inode!\n");
+	}
+	else {
+		// find block to begin writing to
+		union fs_block temp;
+		int chunkSize = BLOCK_SIZE;
+
+		int overallIndex = offset / BLOCK_SIZE; // ensure we get a valid int index
+		while (overallIndex < 5 && bytes_written < length) {
+			if (inode.direct[overallIndex] == 0) {
+				int index = getNextBlock();
+
+				if (index == -1)
+				{
+					printf("simplefs: Error! Not enough space left to write to.\n");
+					return -1;
+				}
+				inode.direct[overallIndex] = index;
+				bitmap[overallIndex] = 1;
+			}
+
+			if (chunkSize + bytes_written > length) {
+				chunkSize = length - bytes_written;
+			}
+
+			strncpy(temp.data, data, chunkSize);
+			data += chunkSize;
+
+			disk_write(inode.direct[overallIndex], temp.data);
+			inode.size += chunkSize;
+			bytes_written += chunkSize;
+			overallIndex++;
+		}
+
+		// still have some data left to write, need indirect blocks
+		if (bytes_written < length) {
+			union fs_block indirect_block;
+			if (inode.indirect == 0) {
+				int index = getNextBlock();
+				if (index == -1) {
+					printf("simplefs: Error! There is no space left to write to.\n");
+					return -1;
+				}
+
+				inode.indirect = index;
+				bitmap[index] = 1;
+			}
+
+			disk_read(inode.indirect, indirect_block.data);
+
+			int blockIndex;
+			for (blockIndex = 0; bytes_written < length; blockIndex++) {
+				if (indirect_block.pointers[blockIndex] == 0) {
+					int index = getNextBlock();
+					if (index == -1) {
+						printf("simplefs: Error! Not enough space left to write to.\n");
+						return -1;
+					}
+					inode.direct[overallIndex] = index;
+				}
+				
+				if (chunkSize + bytes_written > length) {
+					chunkSize = length - bytes_written;
+				}
+
+				strncpy(temp.data, data, chunkSize);
+				data += chunkSize;
+
+				disk_write(inode.direct[overallIndex], temp.data);
+				inode.size += chunkSize;
+				bytes_written += chunkSize;
+			}
+		}
+
+		block.inode[inumber % 128] = inode;
+		disk_write(blockNumber, block.data);
+		return bytes_written;
+	}
+
 	return 0;
 }
