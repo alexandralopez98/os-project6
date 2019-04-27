@@ -40,7 +40,7 @@ int fs_format()
 {
 
 	// create a new file system
-	union fs_block block;
+	union fs_block superblock;
 
 	// return failure on attempt to format an already-mounted disk
 	if (bitmap != NULL) {
@@ -49,28 +49,28 @@ int fs_format()
 	}
 
 	/* Write the superblock */
-	block.super.magic = FS_MAGIC;
-	block.super.nblocks = disk_size();
+	superblock.super.magic = FS_MAGIC;
+	superblock.super.nblocks = disk_size();
 
 	// set aside ten percent of the blocks for inodes
-	if (block.super.nblocks % 10 == 0) {
-		block.super.ninodeblocks = block.super.nblocks/10;
+	if (superblock.super.nblocks % 10 == 0) {
+		superblock.super.ninodeblocks = superblock.super.nblocks/10;
 	}
 	// round up
 	else {
-		block.super.ninodeblocks = block.super.nblocks/10 + 1;
+		superblock.super.ninodeblocks = superblock.super.nblocks/10 + 1;
 	}
 	
-	block.super.ninodes = INODES_PER_BLOCK * block.super.ninodeblocks;
+	superblock.super.ninodes = INODES_PER_BLOCK * superblock.super.ninodeblocks;
 
-	disk_write(0, block.data);
+	disk_write(0, superblock.data);
 
 	//Destroy any data already present
 	union fs_block reset;
 	memset(reset.data, 0, 4096);
 	
 	int i;
-	for (i = 0; i < block.super.ninodeblocks; i++) {
+	for (i = 0; i < superblock.super.ninodeblocks; i++) {
 		disk_write(i, reset.data);
 	}
 
