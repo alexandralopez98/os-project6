@@ -232,9 +232,8 @@ int fs_create()
 		int j;
 		// loop through all inodes in our inode block
 		for (j = 0; j < INODES_PER_BLOCK; j++) {
-			// TODO: check this if statement
 			if (j == 0 && i == 1) {
-				j = 1;
+				j = 1; //deals with invalid inode 0
 			}
 
 			// read in inode at that index
