@@ -9,11 +9,13 @@
 #include <unistd.h>
 
 int *bitmap;
+int sizeBitmap;
 
 #define FS_MAGIC           0xf0f03410
 #define INODES_PER_BLOCK   128
 #define POINTERS_PER_INODE 5
 #define POINTERS_PER_BLOCK 1024
+#define BLOCK_SIZE BLOCK_SIZE
 
 struct fs_superblock {
 	int magic;
@@ -67,7 +69,7 @@ int fs_format()
 
 	//Destroy any data already present
 	union fs_block reset;
-	memset(reset.data, 0, 4096);
+	memset(reset.data, 0, BLOCK_SIZE);
 	
 	int i;
 	for (i = 0; i < superblock.super.ninodeblocks; i++) {
@@ -125,13 +127,13 @@ void fs_debug()
 				// go through all 5 direct pointers to data blocks
 				printf("\tdirect blocks:");
 				int k;
-				for (k = 0; (k * 4096 < inode.size) && (k < 5); k++) {
+				for (k = 0; (k * BLOCK_SIZE < inode.size) && (k < 5); k++) {
 					printf(" %d", inode.direct[k]);
 				}
 				printf("\n");
 
 				// check for indirect block (inode size will be greater than the total size of 5 direct blocks)
-				if (inode.size > 5 * 4096) {
+				if (inode.size > 5 * BLOCK_SIZE) {
 					printf("\tindirect block: %d\n", inode.indirect);
 
 					// find the indirect data blocks
@@ -139,11 +141,11 @@ void fs_debug()
 					disk_read(inode.indirect, blockforindirects.data);
 
 					int indirectblocks;
-					if (inode.size % 4096 == 0) {
-						indirectblocks = inode.size/4096 - 5; 
+					if (inode.size % BLOCK_SIZE == 0) {
+						indirectblocks = inode.size/BLOCK_SIZE - 5; 
 					}
 					else {
-						indirectblocks = inode.size/4096 - 5 + 1;
+						indirectblocks = inode.size/BLOCK_SIZE - 5 + 1;
 					}
 
 					printf("\tindirect data blocks:");
@@ -161,6 +163,49 @@ void fs_debug()
 
 int fs_mount() 
 {
+	union fs_block block;
+	disk_read(0, block.data); //reads superblock
+
+	bitmap = calloc(block.super.nblocks, sizeof(int)); //creates array of integers in memory for our bitmap.
+	sizeBitmap = block.super.nblocks; //sets bitmap size
+
+	union fs_block inode_block;
+	struct fs_inode inode;
+	int i;
+	for (i = 1; i < block.super.ninodeblocks; i++) { //loops through inode blocks
+		disk_read(i, inode_block.data);
+		int j;
+		for (j = 0; j < INODES_PER_BLOCK; j++) { //loops through inodes in each inode block.
+			inode = inode_block.inode[j];
+			if (inode.isvalid) {
+				bitmap[i] = 1;
+				int k;
+				for (k = 0; k * BLOCK_SIZE < inode.size && k < 5; k++) { //loops through all direct pointers in inode.
+					bitmap[inode.direct[k]] = 1;
+				}
+				if (inode.size > 5 * BLOCK_SIZE) {
+					bitmap[inode.indirect] = 1;
+
+					union fs_block temp;
+					disk_read(inode.indirect, temp.data);
+					int q;
+					int indirectblocks; //determines number of indirect blocks.
+					if (inode.size % BLOCK_SIZE == 0) {
+						indirectblocks = inode.size / BLOCK_SIZE - 5;
+					}
+					else {
+						indirectblocks = inode.size / BLOCK_SIZE - 5 + 1;
+					}
+					for (q = 0; q < indirectblocks; q++) { //loops through indirect block
+						bitmap[temp.pointers[q]] = 1;
+					}
+				}
+			}
+
+		}
+	}
+
+
 	return 0;
 }
 
@@ -265,8 +310,36 @@ int fs_delete(int inumber)
 	return 0;
 }
 
-int fs_getsize( int inumber )
+int fs_getsize(int inumber)
 {
+	// get inode block
+	int blockNumber = getBlockNumber(inumber);
+
+	// read in the super block
+	union fs_block block;
+	disk_read(0, block.data);
+
+	// check if the block number is valid; return -1 on error
+	if (blockNumber > block.super.ninodeblocks)
+	{
+		printf("simplefs: Error! Block number is out of bounds.\n");
+		return -1;
+	}
+
+	// read in the inode block
+	disk_read(blockNumber, block.data);
+
+	// read in the inode
+	struct fs_inode inode = block.inode[inumber % 128];
+
+	// check if inode is valid; return size on success
+	if (inode.isvalid)
+	{
+		return inode.size;
+	}
+
+	// inode is invalid; return -1 on error
+	printf("simplefs: Error! Invalid inode number.\n");
 	return -1;
 }
 
