@@ -164,10 +164,16 @@ int fs_mount()
 	return 0;
 }
 
+int getInodeNumber(int blockindex, int inodeindex) {
+	int temp = ((blockindex - 1) * INODES_PER_BLOCK) + inodeindex;
+	return temp;
+}
+
 int fs_create()
 {
 	// no mounted disk
 	if (bitmap == NULL) {
+		printf("simplefs: Error! No mounted disk.\n");
 		return 0;
 	}
 
@@ -175,41 +181,87 @@ int fs_create()
 	disk_read(0, block.data);
 
 	int i;
-	for (i = 1; i < block.super.nblocks; i++) {
-		// read and heck inode block for empty spaces
+	// loop through all inode blocks
+	for (i = 1; i < block.super.ninodeblocks; i++) {
+		// read in every inode block
 		disk_read(i, block.data);
 
 		struct fs_inode inode;
 		int j;
-		for (j = 0; j < POINTERS_PER_BLOCK; j++) {
-			if (j == 0 && i == 1) {
-				j = 1;
-			}
+		// loop through all inodes in our inode block
+		for (j = 0; j < INODES_PER_BLOCK; j++) {
+			// TODO: check this if statement
+			// if (j == 0 && i == 1) {
+			// 	j = 1;
+			// }
 
+			// read in inode at that index
 			inode = block.inode[j];
 
+			// check if inode is valid
 			if (!inode.isvalid) {
-
-				// valid inode = safe to fill space
-				inode.isvalid = 1;
+				// inode is invalid; we will store our new inode here
+				// set our new inode (reset direct and indirect pointers and set size to 0)
 				inode.size = 0;
 				memset(inode.direct, 0, sizeof(inode.direct));
 				inode.indirect = 0;
-
+				inode.isvalid = 1;
+				
+				// update bitmap
 				bitmap[i] = 1;
+				// set the inode at the index in the block to our new inode
 				block.inode[j] = inode;
+				// write updated inode block to disk
 				disk_write(i, block.data);
-				return j + (i - 1) * 128;
+
+				// on success, return the inode number
+				int inodeNumber = getInodeNumber(i, j);
+				return inodeNumber;
 			}
 		}
 	}
 
-	// failed to create inode because blocks are full
+	// return 0 on failure to create inode (all inode blocks are full)
+	printf("simplefs: Error! Unable to create new inode.\n");
 	return 0;
 }
 
-int fs_delete( int inumber )
+int getBlockNumber(int inumber) {
+	int temp = (inumber + INODES_PER_BLOCK - 1) / INODES_PER_BLOCK; 
+	return temp;
+}
+
+int fs_delete(int inumber)
 {
+	// find the block index that we need
+	int blockNumber = getBlockNumber(inumber);
+
+	union fs_block block;
+	disk_read(0, block.data);
+
+	// ensure that the index is not beyond the bounds
+	if (blockNumber > block.super.ninodeblocks)
+	{
+		printf("simplefs: Error! Block number is out of bounds.\n");
+		return 0;
+	}
+	//read in the data from our inode block
+	disk_read(blockNumber, block.data);
+
+	struct fs_inode inode = block.inode[inumber % 128];
+	if (inode.isvalid) {
+		//zero out everything in the inode struct.
+		inode.size = 0;
+		memset(inode.direct, 0, sizeof(inode.direct));
+		inode.indirect = 0;
+		inode.isvalid = 0;
+		block.inode[inumber % 128] = inode; //update block's inode.
+		disk_write(blockNumber, block.data);
+		return 1;
+	}
+
+	// return 0 if it's an invalid inode
+	printf("simplefs: Error! Unable to delete inode.\n");
 	return 0;
 }
 
