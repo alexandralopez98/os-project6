@@ -65,14 +65,15 @@ int fs_format()
 	
 	superblock.super.ninodes = INODES_PER_BLOCK * superblock.super.ninodeblocks;
 
+	// write the superblock to disk
 	disk_write(0, superblock.data);
 
-	//Destroy any data already present
+	// destroy any data already present (skipping the superblock)
 	union fs_block reset;
 	memset(reset.data, 0, BLOCK_SIZE);
 	
 	int i;
-	for (i = 0; i < superblock.super.ninodeblocks; i++) {
+	for (i = 1; i < superblock.super.ninodeblocks; i++) {
 		disk_write(i, reset.data);
 	}
 	
@@ -160,16 +161,22 @@ void fs_debug()
 
 int fs_mount() 
 {
-	union fs_block block;
-	disk_read(0, block.data); //reads superblock
 
-	bitmap = calloc(block.super.nblocks, sizeof(int)); //creates array of integers in memory for our bitmap.
-	sizeBitmap = block.super.nblocks; //sets bitmap size
+	// read the superblock
+	union fs_block block;
+	disk_read(0, block.data); 
+
+	// create array of integers in memory for our bitmap
+	bitmap = calloc(block.super.nblocks, sizeof(int)); 
+	// set bitmap size
+	sizeBitmap = block.super.nblocks; 
 
 	union fs_block inode_block;
 	struct fs_inode inode;
 	int i;
-	for (i = 1; i < block.super.ninodeblocks; i++) { //loops through inode blocks
+
+	// loop through the inode blocks
+	for (i = 1; i < block.super.ninodeblocks; i++) { 
 		disk_read(i, inode_block.data);
 		int j;
 		for (j = 0; j < INODES_PER_BLOCK; j++) { //loops through inodes in each inode block.
